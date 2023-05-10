@@ -42,7 +42,6 @@ func newApplication() *application {
 	if err != nil {
 		errorLog.Fatal(err)
 	}
-	bot.Debug = true
 	infoLog.Printf("Authorized on account %s", bot.Self.UserName)
 	return &application{
 		bot:           bot,
