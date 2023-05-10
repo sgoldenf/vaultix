@@ -2,10 +2,7 @@ package models
 
 import (
 	"context"
-	"errors"
-	"strings"
 
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sgoldenf/vaultix/internal/utils"
 )
@@ -20,7 +17,7 @@ type PasswordModel struct {
 }
 
 func (m *PasswordModel) AddPassword(userID int64, service, login, password, masterPassword string) error {
-	encryptedPassword, err := utils.EncryptPassword([]byte(password), []byte(masterPassword))
+	encryptedPassword, err := utils.EncryptPassword(password, masterPassword)
 	if err != nil {
 		return err
 	}
@@ -28,14 +25,6 @@ func (m *PasswordModel) AddPassword(userID int64, service, login, password, mast
 		`insert into passwords (user_id, service, login, encrypted_password) values ($1, $2, $3, $4) returning id;`,
 		userID, service, login, encryptedPassword)
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) {
-			// Check if error code is duplicate_object (42710)
-			// Check if error message contains passwords_user_service_login_uc (constraint for unique credentials)
-			if pgErr.Code == "42710" && strings.Contains(pgErr.Message, "passwords_user_service_login_uc") {
-				return ErrDuplicateCredentials
-			}
-		}
 		return err
 	}
 	return nil
@@ -53,19 +42,36 @@ func (m *PasswordModel) GetPasswords(userID int64, service, masterPassword strin
 	var passwords []*Password
 	for rows.Next() {
 		var login string
-		var encrypted_password []byte
-		err = rows.Scan(&login, &encrypted_password)
-		if err != nil {
+		var encrypted_password string
+		if err := rows.Scan(&login, &encrypted_password); err != nil {
 			return nil, err
 		}
-		password, err := utils.DecryptPassword(encrypted_password, []byte(masterPassword))
-		if err != nil {
+		if password, err := utils.DecryptPassword(encrypted_password, masterPassword); err != nil {
 			return nil, err
+		} else {
+			passwords = append(passwords, &Password{
+				Login:    login,
+				Password: password,
+			})
 		}
-		passwords = append(passwords, &Password{
-			Login:    login,
-			Password: password,
-		})
 	}
 	return passwords, nil
+}
+
+func (m *PasswordModel) DeletePasswords(userID int64, service string) (int, error) {
+	var deleted int
+	err := m.Pool.QueryRow(context.Background(),
+		`delete from passwords where user_id = $1 and service = $2 returning count();`,
+		userID, service,
+	).Scan(&deleted)
+	return deleted, err
+}
+
+func (m *PasswordModel) Exists(userID int64, service, login string) (bool, error) {
+	var exists bool
+	err := m.Pool.QueryRow(context.Background(),
+		`select exists(select true from passwords where user_id = $1 and service = $2 and login = $3);`,
+		userID, service, login,
+	).Scan(&exists)
+	return exists, err
 }
