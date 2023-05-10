@@ -16,11 +16,15 @@ type MessageModel struct {
 }
 
 func (m *MessageModel) AddMessage(chatID int64, messageID int) error {
-	_, err := m.Pool.Query(context.Background(),
+	rows, err := m.Pool.Query(context.Background(),
 		`insert into messages (chat_id, message_id) values ($1, $2);`,
 		chatID, messageID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	return nil
 }
 
 func (m *MessageModel) DeleteExpired() ([]*Message, error) {

@@ -56,7 +56,6 @@ func main() {
 				app.errorLog.Println(err)
 				continue
 			}
-			app.infoLog.Println(update.CallbackQuery.Data)
 			if update.CallbackQuery.Data == "Restart" {
 				if err := app.deleteUser(update.CallbackQuery.From.ID); err != nil {
 					app.errorLog.Println(err)

@@ -21,12 +21,13 @@ func (m *PasswordModel) AddPassword(userID int64, service, login, password, mast
 	if err != nil {
 		return err
 	}
-	_, err = m.Pool.Query(context.Background(),
+	rows, err := m.Pool.Query(context.Background(),
 		`insert into passwords (user_id, service, login, encrypted_password) values ($1, $2, $3, $4) returning id;`,
 		userID, service, login, encryptedPassword)
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 	return nil
 }
 
