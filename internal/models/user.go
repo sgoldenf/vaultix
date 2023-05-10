@@ -25,7 +25,7 @@ func (m *UserModel) CreateUser(userID int64) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	hashedPassword, err := bcrypt.GenerateFromPassword(key, 12)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(key), 12)
 	if err != nil {
 		return "", err
 	}
@@ -42,7 +42,7 @@ func (m *UserModel) CreateUser(userID int64) (string, error) {
 		}
 		return "", err
 	}
-	return string(key), nil
+	return key, nil
 }
 
 func (m *UserModel) Authenticate(userID int64, password string) (int, error) {
@@ -84,13 +84,13 @@ func (m *UserModel) DeleteUser(userID int64) (passwordsDeleted int64, usersDelet
 	defer tx.Rollback(context.Background())
 	res1, err := tx.Exec(
 		context.Background(),
-		`delete from passwords where user_id = $1);`, userID)
+		`delete from passwords where user_id = $1;`, userID)
 	if err != nil {
 		return
 	}
 	res2, err := tx.Exec(
 		context.Background(),
-		`delete from users where id = $1`, userID)
+		`delete from users where id = $1;`, userID)
 	if err != nil {
 		return
 	}
