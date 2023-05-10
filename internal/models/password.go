@@ -25,7 +25,7 @@ func (m *PasswordModel) AddPassword(userID int64, service, login, password, mast
 		return err
 	}
 	_, err = m.Pool.Query(context.Background(),
-		`insert into passwords (user_id, service, login, encrypted_password) values $1, $2, $3, $4 returning id;`,
+		`insert into passwords (user_id, service, login, encrypted_password) values ($1, $2, $3, $4) returning id;`,
 		userID, service, login, encryptedPassword)
 	if err != nil {
 		var pgErr *pgconn.PgError
@@ -42,8 +42,30 @@ func (m *PasswordModel) AddPassword(userID int64, service, login, password, mast
 }
 
 func (m *PasswordModel) GetPasswords(userID int64, service, masterPassword string) ([]*Password, error) {
-	// rows, err := m.Pool.Query(context.Background(),
-	// 	`select login, encrypted_password from passwords where user_id=$1 and service = $2;`,
-	// )
-	return nil, nil
+	rows, err := m.Pool.Query(context.Background(),
+		`select login, encrypted_password from passwords where user_id=$1 and service = $2;`,
+		userID, service,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var passwords []*Password
+	for rows.Next() {
+		var login string
+		var encrypted_password []byte
+		err = rows.Scan(&login, &encrypted_password)
+		if err != nil {
+			return nil, err
+		}
+		password, err := utils.DecryptPassword(encrypted_password, []byte(masterPassword))
+		if err != nil {
+			return nil, err
+		}
+		passwords = append(passwords, &Password{
+			Login:    login,
+			Password: password,
+		})
+	}
+	return passwords, nil
 }
