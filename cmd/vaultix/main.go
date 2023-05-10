@@ -43,7 +43,7 @@ func main() {
 			}
 			if err := handler(update.Message); err != nil {
 				app.errorLog.Println(err)
-				app.notifyUser(update.CallbackQuery.From.ID, "")
+				app.errorNotification(update.Message.From.ID)
 			}
 		} else if update.CallbackQuery != nil {
 			callback := tgbotapi.NewCallback(
@@ -52,13 +52,14 @@ func main() {
 				app.errorLog.Println(err)
 				continue
 			}
+			app.infoLog.Println(update.CallbackQuery.Data)
 			if update.CallbackQuery.Data == "Restart" {
-				if err := app.deleteUser(update.CallbackQuery.From.ID); err == nil {
+				if err := app.deleteUser(update.CallbackQuery.From.ID); err != nil {
 					app.errorLog.Println(err)
-					app.notifyUser(update.CallbackQuery.From.ID, "")
+					app.errorNotification(update.CallbackQuery.From.ID)
 				} else if err = app.createUser(update.CallbackQuery.From.ID); err != nil {
 					app.errorLog.Println(err)
-					app.notifyUser(update.CallbackQuery.From.ID, "")
+					app.errorNotification(update.CallbackQuery.From.ID)
 				}
 			} else if update.CallbackQuery.Data == "Cancel" {
 				deleteMsg := tgbotapi.NewDeleteMessage(
