@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 	"log"
+	"math/rand"
 	"os"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
@@ -14,6 +16,7 @@ var (
 )
 
 func init() {
+	rand.Seed(time.Now().UnixNano())
 	if err := godotenv.Load(); err != nil {
 		log.Print("WARNING: No .env file found")
 	}
@@ -34,6 +37,7 @@ func main() {
 	updateConfig := tgbotapi.NewUpdate(0)
 	updateConfig.Timeout = 25
 	updates := app.bot.GetUpdatesChan(updateConfig)
+	go app.deleteExpiredMessagesFromBotRoutine()
 	for update := range updates {
 		if update.Message != nil && update.Message.Command() != "" {
 			command := update.Message.Command()
@@ -62,13 +66,7 @@ func main() {
 					app.errorNotification(update.CallbackQuery.From.ID)
 				}
 			} else if update.CallbackQuery.Data == "Cancel" {
-				deleteMsg := tgbotapi.NewDeleteMessage(
-					update.FromChat().ChatConfig().ChatID,
-					update.CallbackQuery.Message.MessageID,
-				)
-				if _, err := app.bot.Send(deleteMsg); err != nil {
-					app.errorLog.Println(err)
-				}
+				app.deleteMessage(update.FromChat().ID, update.CallbackQuery.Message.MessageID)
 			}
 		}
 	}
