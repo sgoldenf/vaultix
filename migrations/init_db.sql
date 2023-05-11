@@ -12,6 +12,7 @@ create table if not exists passwords (
     constraint passwords_user_service_login_uc unique (user_id, service, login)
 );
 create index if not exists user_id_idx on passwords (user_id);
+create index if not exists id_service_idx on passwords(user_id, service);
 create table if not exists messages (
     id serial primary key,
     chat_id bigint not null,

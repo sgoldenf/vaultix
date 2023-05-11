@@ -59,13 +59,15 @@ func (m *PasswordModel) GetPasswords(userID int64, service, masterPassword strin
 	return passwords, nil
 }
 
-func (m *PasswordModel) DeletePasswords(userID int64, service string) (int, error) {
-	var deleted int
-	err := m.Pool.QueryRow(context.Background(),
-		`delete from passwords where user_id = $1 and service = $2 returning count();`,
+func (m *PasswordModel) DeletePasswords(userID int64, service string) (int64, error) {
+	res, err := m.Pool.Exec(context.Background(),
+		`delete from passwords where user_id = $1 and service = $2;`,
 		userID, service,
-	).Scan(&deleted)
-	return deleted, err
+	)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected(), nil
 }
 
 func (m *PasswordModel) Exists(userID int64, service, login string) (bool, error) {
